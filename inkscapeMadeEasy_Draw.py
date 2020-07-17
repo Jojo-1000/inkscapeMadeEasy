@@ -23,7 +23,7 @@
 # --------------------------------------------------------------------------------------
 
 # Please uncomment (remove the # character) in the following line to disable LaTeX support via textext extension.
-# useLatex=False
+useLatex=False
 
 
 try:
@@ -38,6 +38,7 @@ import math
 import numpy as np
 
 import inkex
+from lxml import etree
 import simplestyle
 
 if useLatex:
@@ -463,14 +464,7 @@ class marker():
             return nameID
 
         if RenameMode == 2:
-            numberID = 1
-            new_id = nameID + '_n%05d' % numberID
-            while new_id in ExtensionBaseObj.doc_ids:
-                numberID += 1
-
-                new_id = nameID + '_n%05d' % numberID
-            ExtensionBaseObj.doc_ids[new_id] = 1
-            nameID = new_id
+            nameID = self.svg.get_unique_id(nameID)
 
         if RenameMode == 1 and ExtensionBaseObj.findMarker(nameID):
             defs = ExtensionBaseObj.getDefinitions()
@@ -482,7 +476,7 @@ class marker():
         marker_attribs = {inkex.addNS('stockid', 'inkscape'): nameID, 'orient': 'auto', 'refY': '0.0', 'refX': '0.0', 'id': nameID,
                           'style': 'overflow:visible'}
 
-        newMarker = inkex.etree.SubElement(ExtensionBaseObj.getDefinitions(), inkex.addNS('marker', 'defs'), marker_attribs)
+        newMarker = etree.SubElement(ExtensionBaseObj.getDefinitions(), 'marker', marker_attribs)
 
         if not fillColor:
             fillColor = 'none'
@@ -491,14 +485,14 @@ class marker():
 
         marker_style = {'fill-rule': 'evenodd', 'fill': fillColor, 'stroke': strokeColor, 'stroke-width': str(lineWidth)}
 
-        marker_lineline_attribs = {'d': markerPath, 'style': simplestyle.formatStyle(marker_style)}
+        marker_lineline_attribs = {'d': markerPath, 'style': str(inkex.Style(marker_style))}
 
         if markerTransform:
             marker_lineline_attribs['transform'] = markerTransform
 
-        inkex.etree.SubElement(newMarker, inkex.addNS('path', 'defs'), marker_lineline_attribs)
+        etree.SubElement(newMarker, 'path', marker_lineline_attribs)
 
-        ExtensionBaseObj.doc_ids[nameID] = 1
+        ExtensionBaseObj.svg.get_ids().add(nameID)
 
         # print tostring(ExtensionBaseObj.getDefinitions())
         return nameID
@@ -1091,12 +1085,12 @@ class text():
         if fontSize:
             textStyle['font-size'] = str(fontSize) + 'px'
 
-        AttribsText = {inkex.addNS('space', 'xml'): "preserve", 'style': simplestyle.formatStyle(textStyle), 'x': str(coords[0]), 'y': str(coords[1]),
+        AttribsText = {inkex.addNS('space', 'xml'): "preserve", 'style': str(inkex.Style(textStyle)), 'x': str(coords[0]), 'y': str(coords[1]),
                        inkex.addNS('linespacing', 'sodipodi'): textStyle['line-height']}
 
-        # textObj = inkex.etree.SubElement(parent, inkex.addNS('text','svg'), AttribsText )
+        # textObj = etree.SubElement(parent, inkex.addNS('text','svg'), AttribsText )
 
-        textObj = inkex.etree.Element(inkex.addNS('text', 'svg'), AttribsText)
+        textObj = etree.Element(inkex.addNS('text', 'svg'), AttribsText)
         parent.append(textObj)
 
         AttribsLineText = {inkex.addNS('role', 'sodipodi'): "line", 'x': str(coords[0]), 'y': str(coords[1])}
@@ -1104,8 +1098,8 @@ class text():
         textLines = text.split('\\n')
 
         for n in range(len(textLines)):
-            myTspan = inkex.etree.SubElement(textObj, inkex.addNS('tspan', 'svg'), AttribsLineText)
-            myTspan.text = textLines[n].decode('utf-8')
+            myTspan = etree.SubElement(textObj, inkex.addNS('tspan', 'svg'), AttribsLineText)
+            myTspan.text = textLines[n]
 
         if angleDeg != 0:
             ExtensionBaseObj.rotateElement(textObj, center=coords, angleDeg=angleDeg)  # negative angle bc inkscape is upside down
@@ -1576,9 +1570,9 @@ class cubicBezier():
 
         # M = move, L = line, H = horizontal line, V = vertical line, C = curve, S = smooth curve,
         # Q = quadratic Bezier curve, T = smooth quadratic Bezier curve, A = elliptical Arc,Z = closepath
-        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': simplestyle.formatStyle(lineStyle), 'd': string_coords, inkex.addNS('nodetypes', 'sodipodi'): string_nodeTypes}
+        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': str(inkex.Style(lineStyle)), 'd': string_coords, inkex.addNS('nodetypes', 'sodipodi'): string_nodeTypes}
 
-        return inkex.etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
+        return etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
 
 
 class line():
@@ -1648,9 +1642,9 @@ class line():
 
         # M = move, L = line, H = horizontal line, V = vertical line, C = curve, S = smooth curve,
         # Q = quadratic Bezier curve, T = smooth quadratic Bezier curve, A = elliptical Arc,Z = closepath
-        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': simplestyle.formatStyle(lineStyle), 'd': 'M ' + string_coords}
+        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': str(inkex.Style(lineStyle)), 'd': 'M ' + string_coords}
 
-        return inkex.etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
+        return etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
 
     # ---------------------------------------------
     @staticmethod
@@ -1713,10 +1707,10 @@ class line():
 
         # M = move, L = line, H = horizontal line, V = vertical line, C = curve, S = smooth curve,
         # Q = quadratic Bezier curve, T = smooth quadratic Bezier curve, A = elliptical Arc,Z = closepath
-        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': simplestyle.formatStyle(lineStyle),
+        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': str(inkex.Style(lineStyle)),
                    'd': 'm ' + str(offset[0]) + ' ' + str(offset[1]) + string_coords}
 
-        return inkex.etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
+        return etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
 
 
 class arc():
@@ -1846,7 +1840,7 @@ class arc():
             arcString = arcString + ' L ' + str(CenterPoint[0] + offset[0]) + ' ' + str(CenterPoint[1] + offset[1]) + ' z'
 
         # M = moveto,L = lineto,H = horizontal lineto,V = vertical lineto,C = curveto,S = smooth curveto,Q = quadratic Bezier curve,T = smooth quadratic Bezier curveto,A = elliptical Arc,Z = closepath
-        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': simplestyle.formatStyle(lineStyle), inkex.addNS('type', 'sodipodi'): 'arc',
+        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': str(inkex.Style(lineStyle)), inkex.addNS('type', 'sodipodi'): 'arc',
                    inkex.addNS('rx', 'sodipodi'): str(radius), inkex.addNS('ry', 'sodipodi'): str(radius),
                    inkex.addNS('cx', 'sodipodi'): str(CenterPoint[0] + offset[0]), inkex.addNS('cy', 'sodipodi'): str(CenterPoint[1] + offset[1]),
                    inkex.addNS('start', 'sodipodi'): sodipodiAngleStart, inkex.addNS('end', 'sodipodi'): sodipodiAngleEnd,
@@ -1854,7 +1848,7 @@ class arc():
         if flagOpen:
             Attribs[inkex.addNS('open', 'sodipodi')] = 'true'
 
-        return inkex.etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
+        return etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
 
     # ---------------------------------------------
     @staticmethod
@@ -1989,14 +1983,14 @@ class circle():
         arcStringB = ' a %f,%f 0 1 1 %f,%f' % (radius, radius, 2 * radius, 0)
 
         # M = moveto,L = lineto,H = horizontal lineto,V = vertical lineto,C = curveto,S = smooth curveto,Q = quadratic Bezier curve,T = smooth quadratic Bezier curveto,A = elliptical Arc,Z = closepath
-        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': simplestyle.formatStyle(lineStyle), inkex.addNS('type', 'sodipodi'): 'arc',
+        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': str(inkex.Style(lineStyle)), inkex.addNS('type', 'sodipodi'): 'arc',
                    inkex.addNS('rx', 'sodipodi'): str(radius), inkex.addNS('ry', 'sodipodi'): str(radius),
                    inkex.addNS('cx', 'sodipodi'): str(centerPoint[0] + offset[0]), inkex.addNS('cy', 'sodipodi'): str(centerPoint[1] + offset[1]),
                    inkex.addNS('start', 'sodipodi'): '0', inkex.addNS('end', 'sodipodi'): str(2 * math.pi),
                    'd': 'M ' + str(centerPoint[0] + offset[0] + radius) + ' ' + str(
                        centerPoint[1] + offset[1]) + arcStringA + ' ' + arcStringB + ' z'}
 
-        return inkex.etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
+        return etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
 
 
 class rectangle():
@@ -2056,7 +2050,7 @@ class rectangle():
         x = centerPoint[0] - width / 2.0 + offset[0]
         y = centerPoint[1] - height / 2.0 + offset[1]
 
-        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': simplestyle.formatStyle(lineStyle), 'width': str(width), 'height': str(height),
+        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': str(inkex.Style(lineStyle)), 'width': str(width), 'height': str(height),
                    'x': str(x), 'y': str(y), 'rx': str(radiusX), 'ry': str(radiusY)}
 
         if radiusX and radiusX > 0.0:
@@ -2067,7 +2061,7 @@ class rectangle():
                 if radiusY > 0.0:
                     Attribs['ry'] = str(radiusY)
 
-        return inkex.etree.SubElement(parent, inkex.addNS('rect', 'svg'), Attribs)
+        return etree.SubElement(parent, inkex.addNS('rect', 'svg'), Attribs)
 
     @staticmethod
     def corners(parent, corner1, corner2, radiusX=None, radiusY=None, offset=[0, 0], label='rectangle', lineStyle=lineStyle.setSimpleBlack()):
@@ -2178,14 +2172,14 @@ class ellipse():
         arcStringB = ' a %f,%f 0 1 1 %f,%f' % (radiusX, radiusY, 2 * radiusX, 0)
 
         # M = moveto,L = lineto,H = horizontal lineto,V = vertical lineto,C = curveto,S = smooth curveto,Q = quadratic Bezier curve,T = smooth quadratic Bezier curveto,A = elliptical Arc,Z = closepath
-        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': simplestyle.formatStyle(lineStyle), inkex.addNS('type', 'sodipodi'): 'arc',
+        Attribs = {inkex.addNS('label', 'inkscape'): label, 'style': str(inkex.Style(lineStyle)), inkex.addNS('type', 'sodipodi'): 'arc',
                    inkex.addNS('rx', 'sodipodi'): str(radiusX), inkex.addNS('ry', 'sodipodi'): str(radiusY),
                    inkex.addNS('cx', 'sodipodi'): str(centerPoint[0] + offset[0]), inkex.addNS('cy', 'sodipodi'): str(centerPoint[1] + offset[1]),
                    inkex.addNS('start', 'sodipodi'): '0', inkex.addNS('end', 'sodipodi'): str(2 * math.pi),
                    'd': 'M ' + str(centerPoint[0] + offset[0] + radiusX) + ' ' + str(
                        centerPoint[1] + offset[1]) + arcStringA + ' ' + arcStringB + ' z'}
 
-        return inkex.etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
+        return etree.SubElement(parent, inkex.addNS('path', 'svg'), Attribs)
 
 
 BlankSVG = r"""<?xml version="1.0" encoding="UTF-8" standalone="no"?><!-- Created with Inkscape (http://www.inkscape.org/) -->

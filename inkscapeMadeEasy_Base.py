@@ -30,6 +30,7 @@ from copy import deepcopy
 
 import numpy as np
 import inkex
+from lxml import etree
 
 """
 Base helper module that extends Aaron Spike's inkex.py module, adding basic manipulation functions
@@ -194,7 +195,7 @@ class inkscapeMadeEasy(inkex.Effect):
         >>> self.exportSVG([groupA,groupB],'file3.svg')                  # exports groupA and groupB (and all elements contained in it) to the same file
 
         """
-        document = inkex.etree.fromstring(blankSVG)
+        document = etree.fromstring(blankSVG)
 
         elem_tmp = deepcopy(element)
         # add definitions
@@ -208,7 +209,7 @@ class inkscapeMadeEasy(inkex.Effect):
         else:
             document.append(elem_tmp)
 
-        et = inkex.etree.ElementTree(document)
+        et = etree.ElementTree(document)
         et.write(fileOut, pretty_print=True)
 
     def uniqueIdNumber(self, prefix_id):
@@ -238,14 +239,7 @@ class inkscapeMadeEasy(inkex.Effect):
 
 
         """
-        numberID = 1
-        new_id = prefix_id + '-%05d' % numberID
-        while new_id in self.doc_ids:
-            numberID += 1
-            new_id = prefix_id + '-%05d' % numberID
-        self.doc_ids[new_id] = 1
-
-        return new_id
+        return self.svg.get_unique_id(prefix_id)
 
     # ---------------------------------------------
     def getDefinitions(self):
@@ -261,7 +255,7 @@ class inkscapeMadeEasy(inkex.Effect):
         """
         defs = self.getElemFromXpath('/svg:svg//svg:defs')
         if defs is None:
-            defs = inkex.etree.SubElement(self.document.getroot(), inkex.addNS('defs', 'svg'))
+            defs = etree.SubElement(self.document.getroot(), inkex.addNS('defs', 'svg'))
 
         return defs
 
@@ -323,7 +317,7 @@ class inkscapeMadeEasy(inkex.Effect):
         >>> name = x.getElemFromXpath('/svg:svg//svg:defs')   # returns the list of definitions of the document
 
         """
-        elem = self.xpathSingle(xpath)
+        elem = self.svg.getElement(xpath)
         return elem
 
     # ---------------------------------------------
@@ -611,9 +605,9 @@ class inkscapeMadeEasy(inkex.Effect):
         """
         if label != 'none':
             g_attribs = {inkex.addNS('label', 'inkscape'): label}
-            group = inkex.etree.SubElement(parent, 'g', g_attribs)
+            group = etree.SubElement(parent, 'g', g_attribs)
         else:
-            group = inkex.etree.SubElement(parent, 'g')
+            group = etree.SubElement(parent, 'g')
 
         return group
 
@@ -688,14 +682,14 @@ class inkscapeMadeEasy(inkex.Effect):
 
         for operation in listOperations:
             if 'translate' in operation:
-                data = re.compile("translate\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
+                data = re.compile(r"translate\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
                 x = float(data[0])
                 y = float(data[1])
                 mat = np.array([[1, 0, x], [0, 1, y], [0, 0, 1]])
                 transfMatrix = np.dot(transfMatrix, mat)
 
             if 'scale' in operation:
-                data = re.compile("scale\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
+                data = re.compile(r"scale\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
                 scalex = float(data[0])
                 if len(data) == 2:
                     scaley = float(data[1])
@@ -705,7 +699,7 @@ class inkscapeMadeEasy(inkex.Effect):
                 transfMatrix = np.dot(transfMatrix, mat)
 
             if 'rotate' in operation:
-                data = re.compile("rotate\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
+                data = re.compile(r"rotate\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
                 angleRad = -float(data[0]) * np.pi / 180.0  # negative angle because inkscape is upside down =(
                 matRot = np.array([[np.cos(angleRad), np.sin(angleRad), 0], [-np.sin(angleRad), np.cos(angleRad), 0], [0, 0, 1]])
                 if len(data) == 3:  # must translate before and after rotation
@@ -719,19 +713,19 @@ class inkscapeMadeEasy(inkex.Effect):
                 transfMatrix = np.dot(transfMatrix, matRot)
 
             if 'skewX' in operation:
-                data = re.compile("skewX\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
+                data = re.compile(r"skewX\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
                 angleRad = float(data[0]) * np.pi / 180.0
                 mat = np.array([[1, np.tan(angleRad), 0], [0, 1, 0], [0, 0, 1]])
                 transfMatrix = np.dot(transfMatrix, mat)
 
             if 'skewY' in operation:
-                data = re.compile("skewY\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
+                data = re.compile(r"skewY\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
                 angleRad = float(data[0]) * np.pi / 180.0
                 mat = np.array([[1, 0, 0], [np.tan(angleRad), 1, 0], [0, 0, 1]])
                 transfMatrix = np.dot(transfMatrix, mat)
 
             if 'matrix' in operation:
-                data = re.compile("matrix\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
+                data = re.compile(r"matrix\((.*?\S)\)").match(operation.lstrip()).group(1).split()  # retrieves x and y values
                 a = float(data[0])
                 b = float(data[1])
                 c = float(data[2])
